@@ -1,4 +1,4 @@
-import { getPluralIndex } from '../contrib/get-plural-index';
+import { getPluralIndex } from '../contrib/get-plural-index.js';
 
 /**
  * Select a proper translation string based on the given number.

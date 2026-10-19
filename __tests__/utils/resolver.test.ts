@@ -1,5 +1,5 @@
-import { clientFile, serverFile } from '../jest-setup';
-import resolver from '../../src/utils/resolver';
+import { clientFile, serverFile } from '../setup.js';
+import resolver from '../../src/utils/resolver.js';
 
 const results = {
   en: {
@@ -44,14 +44,6 @@ const results = {
 };
 
 describe('resolver', () => {
-  // let clientFile: any;
-  // let serverFile: any;
-  //
-  // beforeAll(() => {
-  //   clientFile = import.meta.glob('../__mocks__/lang/*.json');
-  //   serverFile = import.meta.globEager('../__mocks__/lang/*.json');
-  // });
-
   it.each([
     ['en', results.en.json, results.en.php],
     ['uk', results.uk.json, results.uk.php],

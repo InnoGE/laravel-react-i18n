@@ -1,6 +1,6 @@
-import recognizer from '../utils/recognizer';
+import recognizer from './recognizer.js';
 
-import LocaleFileInterface from '../interfaces/locale-file';
+import type LocaleFileInterface from '../interfaces/locale-file.js';
 
 /**
  * Resolver the language file.

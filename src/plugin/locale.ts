@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-import { dirnameSanitize } from './helper';
+import { dirnameSanitize } from './helper.js';
 
 export default {
   /**

@@ -116,8 +116,8 @@ export function getPluralIndex(locale: string, number: number) {
       return number % 10 === 1 && number % 100 !== 11
         ? 0
         : number % 10 >= 2 && number % 10 <= 4 && (number % 100 < 10 || number % 100 >= 20)
-        ? 1
-        : 2;
+          ? 1
+          : 2;
     case 'cs':
     case 'sk':
       return number === 1 ? 0 : number >= 2 && number <= 4 ? 1 : 2;
@@ -127,8 +127,8 @@ export function getPluralIndex(locale: string, number: number) {
       return number % 10 === 1 && number % 100 !== 11
         ? 0
         : number % 10 >= 2 && (number % 100 < 10 || number % 100 >= 20)
-        ? 1
-        : 2;
+          ? 1
+          : 2;
     case 'sl':
       return number % 100 === 1 ? 0 : number % 100 === 2 ? 1 : number % 100 === 3 || number % 100 === 4 ? 2 : 3;
     case 'mk':
@@ -137,18 +137,18 @@ export function getPluralIndex(locale: string, number: number) {
       return number === 1
         ? 0
         : number === 0 || (number % 100 > 1 && number % 100 < 11)
-        ? 1
-        : number % 100 > 10 && number % 100 < 20
-        ? 2
-        : 3;
+          ? 1
+          : number % 100 > 10 && number % 100 < 20
+            ? 2
+            : 3;
     case 'lv':
       return number === 0 ? 0 : number % 10 === 1 && number % 100 !== 11 ? 1 : 2;
     case 'pl':
       return number === 1
         ? 0
         : number % 10 >= 2 && number % 10 <= 4 && (number % 100 < 12 || number % 100 > 14)
-        ? 1
-        : 2;
+          ? 1
+          : 2;
     case 'cy':
       return number === 1 ? 0 : number === 2 ? 1 : number === 8 || number === 11 ? 2 : 3;
     case 'ro':
@@ -157,14 +157,14 @@ export function getPluralIndex(locale: string, number: number) {
       return number === 0
         ? 0
         : number === 1
-        ? 1
-        : number === 2
-        ? 2
-        : number >= 3 && number <= 10
-        ? 3
-        : number >= 11 && number <= 99
-        ? 4
-        : 5;
+          ? 1
+          : number === 2
+            ? 2
+            : number >= 3 && number <= 10
+              ? 3
+              : number >= 11 && number <= 99
+                ? 4
+                : 5;
     default:
       return 0;
   }

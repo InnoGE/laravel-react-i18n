@@ -3,35 +3,40 @@
 </h1>
 
 <p align="center">
-    <a href="https://github.com/EugeneMeles/laravel-react-i18n/actions"><img alt="GitHub Workflow Status (master)" src="https://img.shields.io/github/workflow/status/EugeneMeles/laravel-react-i18n/Tests/main"></a>
-    <a href="https://www.npmjs.com/package/laravel-react-i18n"><img alt="License" src="https://img.shields.io/npm/l/laravel-react-i18n.svg?sanitize=true"></a>
-    <a href="https://www.npmjs.com/package/laravel-react-i18n"><img alt="Version" src="https://img.shields.io/npm/v/laravel-react-i18n.svg"></a>
-    <a href="https://www.npmjs.com/package/laravel-react-i18n"><img alt="Total Downloads" src="https://img.shields.io/npm/dt/laravel-react-i18n.svg"></a>
+    <b>@innoge/laravel-react-i18n</b> is a <b>React</b> plugin that allows to connect your <b>Laravel</b> Framework translation
+    files with <b>React</b>. It uses the same logic used on <a href="https://laravel.com/docs/localization">Laravel Localization</a>.
 </p>
 
-<p align="center">
-    <b>laravel-react-i18n</b> is a <b>React</b> plugin that allows to connect your <b>Laravel</b> Framework translation
-    files with <b>React</b>. It uses the same logic used on <a href="https://laravel.com/docs/8.x/localization">Laravel Localization</a>.
-</p>
-
-## Demo
-[laravel-react-i18n-playground](https://github.com/EugeneMeles/laravel-react-i18n-playground)
+> Maintained fork of [EugeneMeles/laravel-react-i18n](https://github.com/EugeneMeles/laravel-react-i18n) by InnoGE.
+> The provider and hook keep the `laravel-react-i18n` 2.x API. What changed in 3.0:
+>
+> - `react` is a peer dependency (React 18 and 19), so the package never brings its own React copy (fixes "Invalid hook call" / `dispatcher is null` crashes).
+> - Translations live in one shared store read through `useSyncExternalStore`: lazily loaded locales show up as soon as they arrive, eager ones on the first render.
+> - `trans()`, `transChoice()`, `getActiveLanguage()`, `setLocale()`, `isLocale()` and `getLocales()` work outside components.
+> - Typed `@innoge/laravel-react-i18n/vite` plugin for Vite 6–8.
+>
+> **Breaking changes when migrating from `laravel-react-i18n`** (replace the package name in your imports, then check these):
+>
+> - ESM only: the CommonJS build (`main`, `dist/cjs`, the `vite.js` shim) is gone, so `require()` and CommonJS Jest setups need ESM support.
+> - Only `@innoge/laravel-react-i18n` and `@innoge/laravel-react-i18n/vite` can be imported; deep imports such as `.../dist/...` or the `ContextInterface` type are blocked by the `exports` map.
+> - All providers share one store. Nested or side-by-side providers (Storybook decorators, a second React root) no longer get their own locale.
+> - `setLocale()` returns a promise and switches once the locale's files are loaded; until then `currentLocale()` stays on the old locale. When it is called again before that, the last call wins.
+> - Keys missing in the current locale fall back to `fallbackLocale`, no longer to the previously shown locale.
+> - Changing the provider's `locale` prop after mount switches the locale (2.x ignored it).
+> - `loading` is false once eager files are in (2.x kept it true forever on the client).
+> - The `ssr` provider prop is no longer needed and is ignored.
+> - The Vite plugin no longer deletes the generated `php_*.json` files when the dev server stops; gitignore them.
 
 ## Requirements
-- Laravel >= 9
-- NodeJS >= 16
-- Vite
+- Laravel >= 10
+- Node.js >= 22.12
+- React 18 or 19
+- Vite 6, 7 or 8
 
 ## Installation
 
-With [npm](https://www.npmjs.com):
 ```sh
-npm i laravel-react-i18n
-```
-
-or with [yarn](https://yarnpkg.com):
-```sh
-yarn add laravel-react-i18n
+npm i @innoge/laravel-react-i18n
 ```
 
 ## Setup
@@ -48,7 +53,7 @@ import '../css/app.css';
 import { createRoot } from 'react-dom/client';
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
-import { LaravelReactI18nProvider } from 'laravel-react-i18n';
+import { LaravelReactI18nProvider } from '@innoge/laravel-react-i18n';
 
 const appName = window.document.getElementsByTagName('title')[0]?.innerText || 'Laravel';
 
@@ -77,6 +82,10 @@ createInertiaApp({
 
 #### SSR (Server Side Rendering)
 
+Load the files eagerly (`{ eager: true }`) on the client too, at least for every locale the server renders. Otherwise the first client render shows the raw keys while the lazy files load, and React reports a hydration mismatch.
+
+The store is shared by the whole server process. That is safe with the synchronous `renderToString` Inertia uses, but not with streaming renderers that interleave requests in different locales, and `trans()` must not run at module scope on the server (it would capture whichever locale rendered first).
+
 `ssr.tsx:`
 
 ```tsx
@@ -85,7 +94,7 @@ import { createInertiaApp } from '@inertiajs/react';
 import createServer from '@inertiajs/react/server';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import route from '../../vendor/tightenco/ziggy/dist/index.m';
-import { LaravelReactI18nProvider } from 'laravel-react-i18n';
+import { LaravelReactI18nProvider } from '@innoge/laravel-react-i18n';
 
 const appName = 'Laravel';
 
@@ -126,7 +135,7 @@ In order to load `php` translations, you can use this `Vite` plugin.
 `vite.config.js:`
 
 ```js
-import i18n from 'laravel-react-i18n/vite'; // <-- add this
+import i18n from '@innoge/laravel-react-i18n/vite'; // <-- add this
 
 export default defineConfig({
     plugins: [
@@ -140,8 +149,8 @@ export default defineConfig({
 });
 ```
 
-> During the `npm run dev` execution time, the plugin will create some files like this `php_{lang}.json` on your lang folder.
-> And to avoid that to be commited to your code base, I suggest to your `.gitignore` this like:
+> The plugin generates a `php_{lang}.json` file per locale in your lang folder whenever Vite starts or a PHP lang file changes.
+> Keep them out of git:
 
 ```
 lang/php_*.json
@@ -167,7 +176,7 @@ lang/php_*.json
 ### Hook Response:
 ```tsx
 ...
-import { useLaravelReactI18n } from 'laravel-react-i18n';
+import { useLaravelReactI18n } from '@innoge/laravel-react-i18n';
 
 export default function Component() {
     const { t, tChoice, currentLocale, setLocale, getLocales, isLocale, loading } = useLaravelReactI18n();
@@ -284,9 +293,22 @@ isLocale('uk'); // true
 isLocale('fr'); // false
 ```
 
+### Outside components
+
+Helpers, formatters and toasts can translate without the hook. They read the same store, so call them after the provider has rendered:
+
+```ts
+import { getActiveLanguage, trans, transChoice } from '@innoge/laravel-react-i18n';
+
+toast.error(trans('validation.failed'));
+new Intl.NumberFormat(getActiveLanguage()).format(1234.5);
+```
+
+Components should keep using the hook: it re-renders them when the locale changes.
+
 ### `loading`
 
-The `loading` show current loading state, only on client side where you change the locale.
+`loading` is true while a lazily loaded locale is being fetched. With eager files (`{ eager: true }`, required for SSR) it is never true.
 
 ```tsx
 const { loading, currentLocale, setLocale } = useLaravelReactI18n();

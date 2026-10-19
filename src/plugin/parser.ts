@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fromString } from 'php-array-reader';
 
-import { dirnameSanitize } from './helper';
+import { dirnameSanitize } from './helper.js';
 
 /**
  *
@@ -71,7 +71,7 @@ function getObjectTranslation(dirname: string): Record<string, unknown> {
 
     if (fs.statSync(absoluteFile).isDirectory()) {
       translations[key] = getObjectTranslation(absoluteFile);
-    } else {
+    } else if (basename.endsWith('.php')) {
       const fileContent = fs.readFileSync(absoluteFile, 'utf-8');
       translations[key] = fromString(fileContent);
     }

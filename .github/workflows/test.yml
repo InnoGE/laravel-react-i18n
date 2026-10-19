@@ -2,26 +2,45 @@ name: Testing
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ['master', 'innoge']
   pull_request:
-    branches: [ "master" ]
 
 jobs:
-  build:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run types:check
+      - run: npm run build
 
+  test:
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        node-version: [ 16.x, 18.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+        node-version: [22.x, 24.x]
+        react: [19]
+        include:
+          - node-version: 22.x
+            react: 18
+
+    name: test (node ${{ matrix.node-version }}, react ${{ matrix.react }})
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    - run: npm install
-    - run: npm test
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      - run: npm ci
+      - if: matrix.react == 18
+        run: npm install --no-save --legacy-peer-deps react@18 react-dom@18 @types/react@18 @types/react-dom@18
+      - run: npm test
+      - if: matrix.react == 18
+        run: npm run types:check

@@ -1,4 +1,4 @@
-import ReplacementsInterface from '../interfaces/replacements';
+import type ReplacementsInterface from '../interfaces/replacements.js';
 
 /**
  * Make the place-holder replacements on a line.

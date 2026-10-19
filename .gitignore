@@ -5,3 +5,4 @@
 /coverage
 /dist
 npm-debug.log*
+__tests__/__mocks__/lang/php_*.json

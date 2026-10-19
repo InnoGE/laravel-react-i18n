@@ -1,6 +1,6 @@
-import { mock } from '../jest-setup';
+import { mock } from '../setup.js';
 
-import locale from '../../src/plugin/locale';
+import locale from '../../src/plugin/locale.js';
 
 const jsonLocales = ['de', 'en', 'nl', 'uk'];
 const phpLocales = ['en', 'fr', 'it'];

@@ -1,12 +1,12 @@
 import fs from 'fs';
 
-import { createLogger } from 'vite';
+import { createLogger, type HmrContext, type Plugin } from 'vite';
 
-import { convertToKeyType, saveKeyTypeToFile } from './plugin/key-type';
-import parser from './plugin/parser';
-import locale from './plugin/locale';
+import { convertToKeyType, saveKeyTypeToFile } from './plugin/key-type.js';
+import parser from './plugin/parser.js';
+import locale from './plugin/locale.js';
 
-interface ConfigInterface {
+export interface ConfigInterface {
   langDirname?: string;
   typeDestinationPath?: string;
   typeTranslationKeys?: boolean;
@@ -15,21 +15,14 @@ interface ConfigInterface {
 /**
  *
  */
-export default function i18n(config?: ConfigInterface) {
+export default function i18n(config?: ConfigInterface): Plugin {
   const langDirname = config?.langDirname ? config.langDirname : 'lang';
 
   const logger = createLogger('info', { prefix: '[laravel-react-i18n]' });
 
   let isPhpLocale = false;
-  let files: { path: string; basename: string }[] = [];
-  let exitHandlersBound = false;
   let jsonLocales: string[] = [];
   let phpLocales: string[] = [];
-
-  function clean() {
-    files.forEach((file) => fs.existsSync(file.path) && fs.unlinkSync(file.path));
-    files = [];
-  }
 
   function pushKeys(keys: string[], locales: string[]) {
     if (
@@ -64,7 +57,7 @@ export default function i18n(config?: ConfigInterface) {
       if (!fs.existsSync(langDirname)) {
         const msg = [
           'Language directory is not exist, maybe you did not publish the language files with `php artisan lang:publish`.',
-          'For more information please visit: https://laravel.com/docs/10.x/localization#publishing-the-language-files'
+          'For more information please visit: https://laravel.com/docs/localization#publishing-the-language-files'
         ];
 
         msg.map((str) => logger.error(str, { timestamp: true }));
@@ -82,7 +75,8 @@ export default function i18n(config?: ConfigInterface) {
       phpLocales = locale.getPhpLocale(langDirname);
 
       if (phpLocales.length > 0) {
-        files = parser(langDirname);
+        // The generated php_*.json files stay (gitignore them): deleting them on exit broke every other dev server and build sharing the lang directory.
+        parser(langDirname);
         isPhpLocale = true;
 
         if (config?.typeTranslationKeys) {
@@ -91,7 +85,7 @@ export default function i18n(config?: ConfigInterface) {
       } else {
         const msg = [
           'Language directory not contain php translations files.',
-          'For more information please visit: https://laravel.com/docs/10.x/localization#introduction'
+          'For more information please visit: https://laravel.com/docs/localization#introduction'
         ];
 
         msg.map((str) => logger.info(str, { timestamp: true }));
@@ -101,8 +95,7 @@ export default function i18n(config?: ConfigInterface) {
         saveKeyTypeToFile(keys.join('|'), config?.typeDestinationPath);
       }
     },
-    buildEnd: clean,
-    handleHotUpdate(ctx: any) {
+    handleHotUpdate(ctx: HmrContext) {
       const keys: string[] = [];
 
       if (config?.typeTranslationKeys) {
@@ -111,7 +104,7 @@ export default function i18n(config?: ConfigInterface) {
 
       if (isPhpLocale) {
         if (/lang\/.*\.php$/.test(ctx.file)) {
-          files = parser(langDirname);
+          parser(langDirname);
         }
 
         if (config?.typeTranslationKeys) {
@@ -122,16 +115,6 @@ export default function i18n(config?: ConfigInterface) {
       if (config?.typeTranslationKeys) {
         saveKeyTypeToFile(keys.join('|'), config?.typeDestinationPath);
       }
-    },
-    configureServer() {
-      if (exitHandlersBound) return;
-
-      process.on('exit', clean);
-      process.on('SIGINT', process.exit);
-      process.on('SIGTERM', process.exit);
-      process.on('SIGHUP', process.exit);
-
-      exitHandlersBound = true;
     }
   };
 }

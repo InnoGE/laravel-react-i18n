@@ -1,4 +1,4 @@
-import pluralization from '../../src/utils/pluralization';
+import pluralization from '../../src/utils/pluralization.js';
 
 it.each([
   ['first', 'first', 1],

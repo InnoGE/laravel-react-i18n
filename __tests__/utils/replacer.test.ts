@@ -1,4 +1,4 @@
-import replacer from '../../src/utils/replacer';
+import replacer from '../../src/utils/replacer.js';
 
 it.each([
   ['some text', ':replace', 'some text'],

@@ -1,5 +1,5 @@
 import path from 'path';
-import { dirnameSanitize } from '../../src/plugin/helper';
+import { dirnameSanitize } from '../../src/plugin/helper.js';
 
 const { sep } = path;
 

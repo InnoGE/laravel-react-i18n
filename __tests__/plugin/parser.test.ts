@@ -1,5 +1,6 @@
-import { mock } from '../jest-setup';
-import parser from '../../src/plugin/parser';
+import fs from 'fs';
+import { mock } from '../setup.js';
+import parser from '../../src/plugin/parser.js';
 
 const result = [
   {
@@ -23,4 +24,12 @@ describe('parser', () => {
   ])('parse php-file', (dirname, expected) => {
     expect(parser(dirname)).toMatchObject(expected);
   });
+});
+
+it('skips files that are not PHP', () => {
+  parser(mock('lang'));
+
+  const parsed = JSON.parse(fs.readFileSync(`${mock('lang')}/php_en.json`, 'utf8'));
+
+  expect(Object.keys(parsed).some((key) => key.startsWith('notes'))).toBe(false);
 });
