@@ -232,7 +232,7 @@ npm run types:check
 npm run format:check
 ```
 
-Changes go through pull requests against `main`. Releases are published from `v*` tags by GitHub Actions with npm provenance. Report security issues privately, see [SECURITY.md](SECURITY.md).
+Changes go through pull requests against `main`. A `v*` tag stages the release from GitHub Actions (trusted publishing, with provenance); it goes live once a maintainer approves it on npmjs.com. Report security issues privately, see [SECURITY.md](SECURITY.md).
 
 ## Credits
 
