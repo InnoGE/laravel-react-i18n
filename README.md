@@ -1,301 +1,160 @@
-<h1 align="center" style="border:none !important">
-    Laravel React i18n
-</h1>
+# @innoge/laravel-react-i18n
 
-<p align="center">
-    <b>@innoge/laravel-react-i18n</b> is a <b>React</b> plugin that allows to connect your <b>Laravel</b> Framework translation
-    files with <b>React</b>. It uses the same logic used on <a href="https://laravel.com/docs/localization">Laravel Localization</a>.
-</p>
+[![npm](https://img.shields.io/npm/v/@innoge/laravel-react-i18n.svg)](https://www.npmjs.com/package/@innoge/laravel-react-i18n)
+[![Testing](https://github.com/InnoGE/laravel-react-i18n/actions/workflows/test.yml/badge.svg)](https://github.com/InnoGE/laravel-react-i18n/actions/workflows/test.yml)
+[![License](https://img.shields.io/npm/l/@innoge/laravel-react-i18n.svg)](LICENSE.md)
 
-> Maintained fork of [EugeneMeles/laravel-react-i18n](https://github.com/EugeneMeles/laravel-react-i18n) by InnoGE.
-> The provider and hook keep the `laravel-react-i18n` 2.x API. What changed in 3.0:
->
-> - `react` is a peer dependency (React 18 and 19), so the package never brings its own React copy (fixes "Invalid hook call" / `dispatcher is null` crashes).
-> - Translations live in one shared store read through `useSyncExternalStore`: lazily loaded locales show up as soon as they arrive, eager ones on the first render.
-> - `trans()`, `transChoice()`, `getActiveLanguage()`, `setLocale()`, `isLocale()` and `getLocales()` work outside components.
-> - Typed `@innoge/laravel-react-i18n/vite` plugin for Vite 6–8.
->
-> **Breaking changes when migrating from `laravel-react-i18n`** (replace the package name in your imports, then check these):
->
-> - ESM only: the CommonJS build (`main`, `dist/cjs`, the `vite.js` shim) is gone, so `require()` and CommonJS Jest setups need ESM support.
-> - Only `@innoge/laravel-react-i18n` and `@innoge/laravel-react-i18n/vite` can be imported; deep imports such as `.../dist/...` or the `ContextInterface` type are blocked by the `exports` map.
-> - All providers share one store. Nested or side-by-side providers (Storybook decorators, a second React root) no longer get their own locale.
-> - `setLocale()` returns a promise and switches once the locale's files are loaded; until then `currentLocale()` stays on the old locale. When it is called again before that, the last call wins.
-> - Keys missing in the current locale fall back to `fallbackLocale`, no longer to the previously shown locale.
-> - Changing the provider's `locale` prop after mount switches the locale (2.x ignored it).
-> - `loading` is false once eager files are in (2.x kept it true forever on the client).
-> - The `ssr` provider prop is no longer needed and is ignored.
-> - The Vite plugin no longer deletes the generated `php_*.json` files when the dev server stops; gitignore them.
+Use your Laravel translations (`lang/*.json` and `lang/{locale}/*.php`) in React, with the same keys, placeholders and pluralization rules as [Laravel's localization](https://laravel.com/docs/localization).
+
+- `t()` and `tChoice()` through a hook, `trans()` and `transChoice()` anywhere else
+- PHP lang files turned into JSON by a Vite plugin, with optional key types
+- Works with Inertia SSR, React 18 and 19
 
 ## Requirements
-- Laravel >= 10
-- Node.js >= 22.12
+
+- Laravel 10+, with published lang files (`php artisan lang:publish`)
+- Node.js 22.12+
 - React 18 or 19
 - Vite 6, 7 or 8
 
-## Installation
+## Quick start (Inertia + React)
 
 ```sh
 npm i @innoge/laravel-react-i18n
 ```
 
-## Setup
+**1. Vite plugin**: turns `lang/{locale}/*.php` into `lang/php_{locale}.json`.
 
-
-#### CSR (Client Side Rendering)
-
-`app.tsx:`
-
-```tsx
-import './bootstrap';
-import '../css/app.css';
-
-import { createRoot } from 'react-dom/client';
-import { createInertiaApp } from '@inertiajs/react';
-import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
-import { LaravelReactI18nProvider } from '@innoge/laravel-react-i18n';
-
-const appName = window.document.getElementsByTagName('title')[0]?.innerText || 'Laravel';
-
-createInertiaApp({
-  title: (title) => `${title} - ${appName}`,
-  resolve: (name) => resolvePageComponent(`./Pages/${name}.tsx`, import.meta.glob('./Pages/**/*.tsx')),
-  setup({ el, App, props }) {
-    const root = createRoot(el);
-
-    root.render(
-      <LaravelReactI18nProvider
-        locale={'uk'}
-        fallbackLocale={'en'}
-        files={import.meta.glob('/lang/*.json')}
-      >
-        <App {...props} />
-      </LaravelReactI18nProvider>
-    );
-  },
-  progress: {
-    color: '#4B5563',
-  },
-});
-
-```
-
-#### SSR (Server Side Rendering)
-
-Load the files eagerly (`{ eager: true }`) on the client too, at least for every locale the server renders. Otherwise the first client render shows the raw keys while the lazy files load, and React reports a hydration mismatch.
-
-The store is shared by the whole server process. That is safe with the synchronous `renderToString` Inertia uses, but not with streaming renderers that interleave requests in different locales, and `trans()` must not run at module scope on the server (it would capture whichever locale rendered first).
-
-`ssr.tsx:`
-
-```tsx
-import ReactDOMServer from 'react-dom/server';
-import { createInertiaApp } from '@inertiajs/react';
-import createServer from '@inertiajs/react/server';
-import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
-import route from '../../vendor/tightenco/ziggy/dist/index.m';
-import { LaravelReactI18nProvider } from '@innoge/laravel-react-i18n';
-
-const appName = 'Laravel';
-
-createServer((page) =>
-  createInertiaApp({
-    page,
-    render: ReactDOMServer.renderToString,
-    title: (title) => `${title} - ${appName}`,
-    resolve: (name) => resolvePageComponent(`./Pages/${name}.tsx`, import.meta.glob('./Pages/**/*.tsx')),
-    setup: ({ App, props }) => {
-      global.route = (name, params, absolute) =>
-        route(name, params, absolute, {
-          // @ts-expect-error
-          ...page.props.ziggy,
-          // @ts-expect-error
-          location: new URL(page.props.ziggy.location),
-        });
-
-      return (
-        <LaravelReactI18nProvider
-          locale={'uk'}
-          fallbackLocale={'en'}
-          files={import.meta.glob('/lang/*.json', { eager: true })}
-        >
-          <App {...props} />
-        </LaravelReactI18nProvider>
-      );
-    },
-  })
-);
-
-```
-
-#### PHP Translations Available on React
-
-In order to load `php` translations, you can use this `Vite` plugin.
-
-`vite.config.js:`
-
-```js
-import i18n from '@innoge/laravel-react-i18n/vite'; // <-- add this
+```ts
+// vite.config.ts
+import i18n from '@innoge/laravel-react-i18n/vite';
 
 export default defineConfig({
-    plugins: [
-        laravel([
-            'resources/css/app.css',
-            'resources/js/app.js'
-        ]),
-        react(),
-        i18n(), // <-- add this
-    ],
+    plugins: [laravel({ /* … */ }), react(), tailwindcss(), i18n()],
 });
 ```
 
-> The plugin generates a `php_{lang}.json` file per locale in your lang folder whenever Vite starts or a PHP lang file changes.
-> Keep them out of git:
+Keep the generated files out of git:
 
 ```
+# .gitignore
 lang/php_*.json
 ```
 
-## Usage
+**2. Provider**: wrap the app once.
 
-
-### Provider Options
-
-- `locale` *(optional)*: If not provided it will try to find from the `<html lang="">` tag or set `en`.
-- `fallbackLocale` *(optional)*: If the `locale` was not provided or is invalid, it will try reach for this `fallbackLocale` instead, default it will try to find from the `<html lang="">` tag or set `en`.
-- `files` *(required)*: The way to reach your language files.
-
-```js
-<LaravelReactI18nProvider
-  locale={'ro'}
-  files={import.meta.glob('/lang/*.json')}
->
-...
-``` 
-
-### Hook Response:
 ```tsx
-...
+// resources/js/app.tsx
+import { createInertiaApp } from '@inertiajs/react';
+import { LaravelReactI18nProvider } from '@innoge/laravel-react-i18n';
+
+createInertiaApp({
+    // …
+    withApp(app) {
+        return (
+            <LaravelReactI18nProvider
+                locale={document.documentElement.lang}
+                fallbackLocale="en"
+                files={import.meta.glob('/lang/*.json', { eager: true })}
+            >
+                {app}
+            </LaravelReactI18nProvider>
+        );
+    },
+});
+```
+
+**3. Translate.**
+
+```tsx
 import { useLaravelReactI18n } from '@innoge/laravel-react-i18n';
 
-export default function Component() {
-    const { t, tChoice, currentLocale, setLocale, getLocales, isLocale, loading } = useLaravelReactI18n();
-    ...
-}
+export default function Welcome({ user }: { user: { name: string } }) {
+    const { t, tChoice } = useLaravelReactI18n();
 
-```
-
-### `t(key: string, replacements?: {[key: string]: string | number})`
-
-The `t()` method can translate a given message.
-
-`lang/pt.json:`
-```json
-{
-    "Welcome!": "Bem-vindo!",
-    "Welcome, :name!": "Bem-vindo, :name!"
+    return (
+        <>
+            <h1>{t('Welcome, :name!', { name: user.name })}</h1>
+            <p>{tChoice('messages.unread', 3)}</p>
+        </>
+    );
 }
 ```
 
-`welcome.tsx:`
+### SSR
+
+The server renders with eager files, so the client must use eager files too, at least for the locales the server renders. With lazy files the first client render shows raw keys and React reports a hydration mismatch.
+
+Share the locale with the page (`'locale' => app()->getLocale()` in `HandleInertiaRequests::share()`), then:
+
 ```tsx
-...
+// resources/js/ssr.tsx
+createServer((page) =>
+    createInertiaApp({
+        page,
+        render: ReactDOMServer.renderToString,
+        // …
+        setup: ({ App, props }) => (
+            <LaravelReactI18nProvider
+                locale={props.initialPage.props.locale as string}
+                fallbackLocale="en"
+                files={import.meta.glob('/lang/*.json', { eager: true })}
+            >
+                <App {...props} />
+            </LaravelReactI18nProvider>
+        ),
+    }),
+);
+```
+
+The translation store is shared by the whole server process. That is safe with `renderToString`, which renders one request at a time. Do not use streaming renderers with several locales, and do not call `trans()` at module scope on the server: it would capture whichever locale rendered first.
+
+## Usage
+
+### Translations
+
+Keys work like Laravel's `__()`: JSON keys (`lang/de.json`) and dotted PHP keys (`lang/de/auth.php` → `auth.failed`, nested folders included). Missing keys fall back to `fallbackLocale`, then to the key itself.
+
+```tsx
 const { t } = useLaravelReactI18n();
 
-t('Welcome!'); // Bem-vindo!
-t('Welcome, :name!', { name: 'Francisco' }); // Bem-vindo Francisco!
-t('Welcome, :NAME!', { name: 'Francisco' }); // Bem-vindo FRANCISCO!
-t('Some untranslated'); // Some untranslated
-...
+t('Welcome!'); // Willkommen!
+t('Welcome, :name!', { name: 'Ida' }); // Willkommen, Ida!
+t('Welcome, :NAME!', { name: 'Ida' }); // Willkommen, IDA!
+t('auth.failed'); // from lang/de/auth.php
+t('Some untranslated text'); // Some untranslated text
 ```
 
-### `tChoice(key: string, count: number, replacements?: {[key: string]: string | number})`
+### Pluralization
 
-The `tChoice()` method can translate a given message based on a count,
-there is also available an `trans_choice` alias, and a mixin called `$tChoice()`.
+`tChoice()` picks the form for a count with Laravel's rules, including inline ranges. `:count` is filled in automatically.
 
-`lang/pt.json:`
 ```json
 {
-  "There is one apple|There are many apples": "Existe uma maça|Existe muitas maças",
-  "{0} There are none|[1,19] There are some|[20,*] There are many": "Não tem|Tem algumas|Tem muitas",
-  "{1} :count minute ago|[2,*] :count minutes ago": "{1} há :count minuto|[2,*] há :count minutos",
+    "messages.unread": "{0} No new messages|{1} :count new message|[2,*] :count new messages"
 }
 ```
 
-`choice.tsx:`
 ```tsx
-...
-const { tChoice } = useLaravelReactI18n()
-
-tChoice('There is one apple|There are many apples', 1); // Existe uma maça
-tChoice('{0} There are none|[1,19] There are some|[20,*] There are many', 19); // Tem algumas
-tChoice('{1} :count minute ago|[2,*] :count minutes ago', 10); // Há 10 minutos.
-...
+tChoice('messages.unread', 0); // No new messages
+tChoice('messages.unread', 5); // 5 new messages
 ```
 
-### `currentLocale()`
-
-The `currentLocale()` returns the locale that is currently being used.
+### Switching the locale
 
 ```tsx
-const { currentLocale } = useLaravelReactI18n()
+const { currentLocale, setLocale, loading } = useLaravelReactI18n();
 
-currentLocale(); // en
+<button onClick={() => setLocale('en')}>English</button>;
 ```
 
-### `setLocale(locale: string)`
+`setLocale()` returns a promise. The new locale is applied once its files are loaded; until then the current one stays visible and `loading` is `true` (only with lazy files). If it is called again before that, the last call wins. It also updates `<html lang>`.
 
-The `setLocale()` can be used to change the locale during the runtime.
-
-```tsx
-const { currentLocale, setLocale } = useLaravelReactI18n();
-
-function handler() {
-    setLocale('it')
-}
-
-return (
-    <div>
-        <h1>Current locale: `{currentLocale()}`</h1>
-        <button onClick={handler}>Change locale to `it`</button>
-    </div>
-)
-```
-
-### `getLocales()`
-
-The `getLocales()` return string array with all locales available in folder `/lang/*`.
-
-```text
-/lang/..
-  de.json
-  en.json
-  nl.json
-  uk.json
-```
-
-`myLocales.tsx:`
-```tsx
-const { getLocales } = useLaravelReactI18n();
-
-getLocales(); // ['de', 'en', 'nl', 'uk']
-```
-
-### `isLocale(locale: string)`
-
-The `isLocale()` method checks the locale is available in folder `/lang/*`.
-
-```tsx
-const { isLocale } = useLaravelReactI18n();
-
-isLocale('uk'); // true
-isLocale('fr'); // false
-```
+Changing the provider's `locale` prop switches the locale as well.
 
 ### Outside components
 
-Helpers, formatters and toasts can translate without the hook. They read the same store, so call them after the provider has rendered:
+Helpers, formatters and toast messages can use the same store without the hook:
 
 ```ts
 import { getActiveLanguage, trans, transChoice } from '@innoge/laravel-react-i18n';
@@ -304,25 +163,77 @@ toast.error(trans('validation.failed'));
 new Intl.NumberFormat(getActiveLanguage()).format(1234.5);
 ```
 
-Components should keep using the hook: it re-renders them when the locale changes.
+These read the current state but do not re-render anything; components should use the hook.
 
-### `loading`
+## API reference
 
-`loading` is true while a lazily loaded locale is being fetched. With eager files (`{ eager: true }`, required for SSR) it is never true.
+### `<LaravelReactI18nProvider>`
 
-```tsx
-const { loading, currentLocale, setLocale } = useLaravelReactI18n();
+| Prop             | Type                                         | Default                  |
+| ---------------- | -------------------------------------------- | ------------------------ |
+| `files`          | `import.meta.glob('/lang/*.json', …)` result | required                 |
+| `locale`         | `string`                                     | `<html lang>`, then `en` |
+| `fallbackLocale` | `string`                                     | `<html lang>`, then `en` |
 
-function handler() {
-    setLocale('it')
-}
+Pass `{ eager: true }` to load every locale up front (needed for SSR); without it each locale is fetched when first used.
 
-if (loading) return <p>Loading...</p>;
+### `useLaravelReactI18n()`
 
-return (
-    <div>
-        <h1>Current locale: `{currentLocale()}`</h1>
-        <button onClick={handler}>Change locale to `it`</button>
-    </div>
-)
+| Returns                              | Description                                    |
+| ------------------------------------ | ---------------------------------------------- |
+| `t(key, replacements?)`              | Translation with `:placeholder` replacements   |
+| `tChoice(key, count, replacements?)` | Pluralized translation                         |
+| `currentLocale()`                    | The active locale                              |
+| `setLocale(locale)`                  | Switch locale; resolves once loaded            |
+| `loading`                            | `true` while a lazily loaded locale is fetched |
+| `getLocales()`                       | Locales found in `lang/`                       |
+| `isLocale(locale)`                   | Whether `lang/` has that locale                |
+
+For typed keys, pass the generated type: `useLaravelReactI18n<I18nKeyType>()`.
+
+### Standalone functions
+
+`trans()`, `transChoice()`, `getActiveLanguage()`, `setLocale()`, `getLocales()` and `isLocale()`, with the same signatures as above.
+
+### Vite plugin
+
+```ts
+i18n({
+    langDirname: 'lang', // where Laravel's lang files live
+    typeTranslationKeys: false, // write a union type of all keys
+    typeDestinationPath: 'resources/js', // folder for LaravelReactI18n.types.ts
+});
 ```
+
+With `typeTranslationKeys`, set `VITE_LARAVEL_REACT_I18N_LOCALE` (and optionally `VITE_LARAVEL_REACT_I18N_FALLBACK_LOCALE`) in `.env`; the keys of those locales become `I18nKeyType`. The plugin regenerates the JSON and the type when a PHP lang file changes during `npm run dev`.
+
+## Migrating from `laravel-react-i18n` 2.x
+
+Replace the package name in your imports and `vite.config`, then check these changes:
+
+- **ESM only.** The CommonJS build is gone, so `require()` and CommonJS Jest setups need ESM support. Deep imports (`…/dist/…`, `ContextInterface`) are blocked by the `exports` map.
+- **One shared store.** All providers share it; nested or side-by-side providers no longer get their own locale.
+- **`setLocale()`** returns a promise and switches once the files are loaded; with overlapping calls the last one wins.
+- **Fallback.** Keys missing in the current locale fall back to `fallbackLocale`, not to the previously shown locale.
+- **`locale` prop changes** after mount now switch the locale (2.x ignored them).
+- **`loading`** is `false` once eager files are in (2.x kept it `true` on the client).
+- **`ssr` prop** is no longer needed and is ignored.
+- **Generated files stay.** The Vite plugin no longer deletes `php_*.json` when the dev server stops; gitignore them.
+
+Fixed along the way: React 19 and SSR crashes (`react` is now a peer dependency), translations that only appeared after the next interaction, and missing types for the Vite plugin.
+
+## Contributing
+
+```sh
+npm ci
+npm test              # Vitest
+npm run test:coverage # must stay at 100%
+npm run types:check
+npm run format:check
+```
+
+Changes go through pull requests against `main`. Releases are published from `v*` tags by GitHub Actions with npm provenance. Report security issues privately, see [SECURITY.md](SECURITY.md).
+
+## Credits
+
+Forked from [EugeneMeles/laravel-react-i18n](https://github.com/EugeneMeles/laravel-react-i18n) by Eugene Meles. Maintained by [InnoGE](https://innoge.de). MIT licensed, see [LICENSE.md](LICENSE.md).
