@@ -19,7 +19,10 @@
   "engines": {
     "node": ">=22.12.0"
   },
-  "repository": "https://github.com/InnoGE/laravel-react-i18n",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/InnoGE/laravel-react-i18n.git"
+  },
   "license": "MIT",
   "description": "Allows to connect your `Laravel` Framework localization files with `React`.",
   "type": "module",
