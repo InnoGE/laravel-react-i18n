@@ -28,4 +28,6 @@ jobs:
         run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
       - run: npm ci
       - run: npm run test:coverage
-      - run: npm publish
+      # Staged publishing (npm 12+): the version goes live only after a maintainer approves it on npmjs.com with 2FA.
+      - run: npm install --global npm@12
+      - run: npm stage publish .
