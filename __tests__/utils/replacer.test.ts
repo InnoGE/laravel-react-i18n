@@ -36,3 +36,8 @@ test('Sentence replace', () => {
 
   expect(replacer(message, replacements)).toBe(expected);
 });
+
+test('returns the message untouched without replacements and copes with empty values', () => {
+  expect(replacer(':name')).toBe(':name');
+  expect(replacer(':Name and :name', { name: '' })).toBe(' and ');
+});

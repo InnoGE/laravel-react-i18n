@@ -1,4 +1,4 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { act, render, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { hydrateRoot } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
@@ -185,6 +185,83 @@ describe('provider', () => {
     expect(result.current.currentLocale()).toBe('en');
     expect(result.current.loading).toBe(false);
     expect(error).toHaveBeenCalled();
+
+    error.mockRestore();
+  });
+
+  it('follows a changed locale prop', async () => {
+    function Locale() {
+      return <p data-testid="locale">{i18n.useLaravelReactI18n().currentLocale()}</p>;
+    }
+
+    const app = (locale: string) => (
+      <i18n.LaravelReactI18nProvider locale={locale} fallbackLocale="en" files={eagerFiles}>
+        <Locale />
+      </i18n.LaravelReactI18nProvider>
+    );
+    const view = render(app('en'));
+
+    view.rerender(app('de'));
+
+    await waitFor(() => expect(view.getByTestId('locale').textContent).toBe('de'));
+  });
+
+  it('uses the fallback plural rules for an unknown locale', () => {
+    const result = renderI18n({ locale: 'xx', fallbackLocale: 'en', files: eagerFiles });
+
+    expect(result.current.tChoice('custom.apple_count', 1)).toBe('1 apple');
+  });
+
+  it('exposes the standalone helpers', async () => {
+    renderI18n({ locale: 'en', fallbackLocale: 'en', files: eagerFiles });
+
+    expect(i18n.transChoice('custom.apple_count', 3)).toBe('3 apples');
+    expect(i18n.isLocale('fr')).toBe(true);
+    expect(i18n.getLocales()).toEqual(['de', 'en', 'fr', 'it', 'nl', 'uk']);
+  });
+
+  it('loads lazy locales that only have a JSON or only a PHP file', async () => {
+    const files = {
+      '/lang/en.json': () => Promise.resolve({ default: { Hello: 'Hello' } }),
+      '/lang/php_fr.json': () => Promise.resolve({ default: { 'auth.failed': 'Échec' } })
+    };
+    const result = renderI18n({ locale: 'fr', fallbackLocale: 'en', files });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.t('auth.failed')).toBe('Échec');
+    expect(result.current.t('Hello')).toBe('Hello');
+  });
+
+  it('takes the locale from <html lang> when none is passed', () => {
+    document.documentElement.lang = 'de';
+
+    const result = renderI18n({ fallbackLocale: 'en', files: eagerFiles });
+
+    expect(result.current.currentLocale()).toBe('de');
+    expect(result.current.t('30 Days')).toBe('30 Tage');
+  });
+
+  it('ignores a failed load that a newer setLocale call already replaced', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const german = deferred<unknown>();
+    const files = {
+      '/lang/en.json': () => Promise.resolve(english),
+      '/lang/de.json': () => german.promise,
+      '/lang/fr.json': () => Promise.resolve({ default: { Hello: 'Bonjour' } })
+    };
+    const result = renderI18n({ locale: 'en', fallbackLocale: 'en', files });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    const toGerman = i18n.setLocale('de');
+    await act(() => i18n.setLocale('fr'));
+
+    german.reject(new Error('chunk 404'));
+    await act(() => toGerman);
+
+    expect(result.current.currentLocale()).toBe('fr');
+    expect(result.current.loading).toBe(false);
 
     error.mockRestore();
   });

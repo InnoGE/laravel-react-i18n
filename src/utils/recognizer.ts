@@ -29,9 +29,7 @@ export default function recognizer(files: Record<string, unknown> | Record<strin
     isLocale: (locale: string): boolean => locales.includes(locale),
     getLocales: () => locales,
     isJsonLocale: (locale: string): boolean => jsonLocales.has(locale),
-    getJsonLocales: () => Array.from(jsonLocales).sort(),
     isPhpLocale: (locale: string): boolean => phpLocales.has(locale),
-    getPhpLocales: () => Array.from(phpLocales).sort(),
     getJsonFile: (locale: string): string => jsonFileLocales[locale],
     getPhpFile: (locale: string): string => phpFileLocales[locale]
   };

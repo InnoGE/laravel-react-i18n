@@ -104,3 +104,8 @@ it.each([
 
   expect(pluralization(message, number, locale)).toBe(correctMessage);
 });
+
+test('uses the Brazilian Portuguese plural rule for pt_BR', () => {
+  expect(pluralization('um|muitos', 0, 'pt_BR')).toBe('um');
+  expect(pluralization('um|muitos', 2, 'pt-BR')).toBe('muitos');
+});

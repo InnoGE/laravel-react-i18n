@@ -33,8 +33,7 @@ let state: I18nState = initialState();
 let requested = state.locale;
 
 function initialState(): I18nState {
-  const documentLang =
-    typeof document !== 'undefined' ? document.documentElement?.lang?.replace('-', '_') || 'en' : 'en';
+  const documentLang = typeof document !== 'undefined' ? document.documentElement.lang.replace('-', '_') || 'en' : 'en';
 
   return { locale: documentLang, fallbackLocale: documentLang, loading: false };
 }
@@ -156,7 +155,7 @@ export async function setLocale(locale: string): Promise<void> {
 }
 
 export function activeLocale(current: I18nState): string {
-  return current.locale || current.fallbackLocale;
+  return current.locale;
 }
 
 /** Locale first, then the fallback locale, then the key itself. */
